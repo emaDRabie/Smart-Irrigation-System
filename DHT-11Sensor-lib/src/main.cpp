@@ -1,3 +1,4 @@
+// more stable than other code without lib
 #include "DHT.h"
 #include <Adafruit_Sensor.h>
 #include <LiquidCrystal.h>
