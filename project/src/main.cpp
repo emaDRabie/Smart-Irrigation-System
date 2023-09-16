@@ -18,13 +18,19 @@ enum State {
 };
 enum Add {
   Name,
-  SoilMoisture
+  minSoilMoisture,
+  maxSoilMoisture,
+  minTemp,
+  maxTemp
 };
 State currentState = ENTER_PASSWORD;
 Add currentAdd = Name;
 struct mode{
   String name;
-  int SoilMoisture;
+  int minSoilMoisture;
+  int maxSoilMoisture;
+  int minTemp;
+  int maxTemp;
 };
 int Iterate = 0; 
 mode modeData[5];
@@ -37,6 +43,8 @@ void changePassword(const String & );
 void addMode(const String & );
 boolean validName(const String & );
 boolean validSoilMoisture(const String & );
+boolean validMinTemp(const String & );
+boolean validMaxTemp(const String & );
 
 void setup() {
   lcd.begin(16, 2);
@@ -96,7 +104,20 @@ void handleInput(const String & input) {
 void enterPassword(const String & password) {
   if (password == currentPassword) {
     lcd.clear();
-    lcd.print("Access granted!");
+    lcd.print("Entering Sys");
+    for(int i =0; i< 3 ; i++){
+    lcd.setCursor(12, 0);
+    lcd.print("    ");
+    lcd.setCursor(12, 0);
+    lcd.print(".");
+    delay(200);
+    lcd.print(".");
+    delay(200);
+    lcd.print(".");
+    delay(200);
+    lcd.print(".");
+    delay(200);
+    }
     delay(500);
     currentState = MENU;
     lcd.clear();
@@ -134,14 +155,30 @@ void menu(const String & menuSelection) {
     lcd.print("START MODE");
     for(int i=0; i<=Iterate; i++){
       Serial.println(modeData[i].name);
-      Serial.println(modeData[i].SoilMoisture);
+      Serial.println(modeData[i].minSoilMoisture);
+      Serial.println(modeData[i].maxSoilMoisture);
+      Serial.println(modeData[i].minTemp);
+      Serial.println(modeData[i].maxTemp);
     }
     break;
   case 4:
     currentState=ENTER_PASSWORD;
     lcd.clear();
-    lcd.print("Restarting....");
-    delay(500);
+    lcd.print("Restarting");
+    for(int i =0; i< 3 ; i++){
+    lcd.setCursor(10, 0);
+    lcd.print("    ");
+    lcd.setCursor(10, 0);
+    lcd.print(".");
+    delay(200);
+    lcd.print(".");
+    delay(200);
+    lcd.print(".");
+    delay(200);
+    lcd.print(".");
+    delay(200);
+    }
+    delay(200);
     lcd.clear();
     lcd.print("Enter password:");
     break;
@@ -172,13 +209,13 @@ void addMode(const String & data) {
   switch (currentAdd){
   case Name:
     if(validName(data)){
-      currentAdd=SoilMoisture;
+      currentAdd=minSoilMoisture;
       lcd.clear();
       lcd.print("Name Done");
       delay(500);
       lcd.clear();
-      lcd.print("Soil Moisture:");
       modeData[Iterate].name=data;
+      lcd.print("min Moisture:");
     }else{
       lcd.print("Invalid!");
       delay(500);
@@ -186,14 +223,63 @@ void addMode(const String & data) {
       lcd.print("Mode Name:");
     }
     break;
-  case SoilMoisture:
+  case minSoilMoisture:
+    if(validSoilMoisture(data)){
+      currentAdd=maxSoilMoisture;
+      modeData[Iterate].minSoilMoisture=data.toInt();
+      lcd.clear();
+      lcd.print("min Moisture Done");
+      delay(1000);
+      lcd.clear();
+      lcd.print("max Moisture:");
+    }else{
+      lcd.print("Invalid!");
+      delay(500);
+      lcd.clear();
+      lcd.print("min Moisture:");
+    }
+    break;
+  case maxSoilMoisture:
+    if(validSoilMoisture(data)){
+      currentAdd=minTemp;
+      modeData[Iterate].maxSoilMoisture=data.toInt();
+      lcd.clear();
+      lcd.print("max Moisture Done");
+      delay(1000);
+      lcd.clear();
+      lcd.print("min Temp:");
+    }else{
+      lcd.print("Invalid!");
+      delay(500);
+      lcd.clear();
+      lcd.print("max Moisture:");
+    }
+    break;
+  case minTemp:
+    if(validSoilMoisture(data)){
+      currentAdd=maxTemp;
+      lcd.setCursor(0, 0);
+      modeData[Iterate].minTemp=data.toInt();
+      lcd.clear();
+      lcd.print("min Temp Done");
+      delay(1000);
+      lcd.clear();
+      lcd.print("max Temp:");
+    }else{
+      lcd.print("Invalid!");
+      delay(500);
+      lcd.clear();
+      lcd.print("min Temp:");
+    }
+    break;
+  case maxTemp:
     if(validSoilMoisture(data)){
       currentState=MENU;
       currentAdd=Name;
-      modeData[Iterate].SoilMoisture=data.toInt();
+      modeData[Iterate].maxTemp=data.toInt();
       Iterate++;
       lcd.clear();
-      lcd.print("Moisture Done");
+      lcd.print("max Temp Done");
       delay(1000);
       lcd.clear();
       lcd.print("C:1 A:2 S:3 R:4");
@@ -201,7 +287,7 @@ void addMode(const String & data) {
       lcd.print("Invalid!");
       delay(500);
       lcd.clear();
-      lcd.print("Soil Moisture:");
+      lcd.print("max Temp:");
     }
     break;
   default:
@@ -219,9 +305,11 @@ boolean validName(const String & name){
   return true;
 }
 boolean validSoilMoisture(const String & Moisture){
+  volatile int myMoisture = Moisture.toInt();
   if(Moisture.length() > 4) return false;
   for (int i = 0; i < Moisture.length(); i++){
     if(!isDigit(Moisture.charAt(i))) return false;
   }
+  if(myMoisture > 100 || myMoisture < 0) return false;
   return true;
 }
