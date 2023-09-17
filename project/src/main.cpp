@@ -1,7 +1,24 @@
 // include the library code:
 #include <Arduino.h>
 #include <LiquidCrystal.h>
-
+#include "DHT.h"
+#include <Adafruit_Sensor.h>
+#define DHTPIN 10
+#define DHTTYPE DHT11
+#define In_1 8
+#define In_2 7
+#define EN_A 9
+DHT dht(DHTPIN, DHTTYPE);
+byte degree_symbol[8] =
+    {
+        0b00111,
+        0b00101,
+        0b00111,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000};
 // LCD interface pin with the arduino pin number it is connected to
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
@@ -41,6 +58,9 @@ void enterPassword(const String & );
 void menu(const String & );
 void changePassword(const String & );
 void addMode(const String & );
+void startMode(const String & );
+void DHT_CODE();
+void terminateSystem();
 boolean validName(const String & );
 boolean validSoilMoisture(const String & );
 boolean validMinTemp(const String & );
@@ -48,8 +68,14 @@ boolean validMaxTemp(const String & );
 
 void setup() {
   lcd.begin(16, 2);
-  Serial.begin(9600);  
   lcd.print("Enter password:");
+  dht.begin();
+  lcd.createChar(0, degree_symbol);
+  Serial.begin(9600);
+  pinMode(In_1, OUTPUT);
+  pinMode(In_2, OUTPUT);
+  pinMode(EN_A, OUTPUT);
+  
 }
 
 void loop() {
@@ -94,7 +120,7 @@ void handleInput(const String & input) {
       addMode(input);
       break;
     case START_MODE:
-      // Handle START_MODE
+      startMode(input);
       break;      
     default:
       // Handle other states
@@ -153,11 +179,19 @@ void menu(const String & menuSelection) {
     currentState=START_MODE;
     lcd.clear();
     lcd.print("START MODE");
-    for(int i=0; i<=Iterate; i++){
+    for(int i=0; i<Iterate; i++){
+      Serial.print("===========(");
+      Serial.print(i+1);
+      Serial.println(")===========");
+      Serial.print("Mode name: ");
       Serial.println(modeData[i].name);
+      Serial.print("Min moisture: ");
       Serial.println(modeData[i].minSoilMoisture);
+      Serial.print("Max moisture: ");
       Serial.println(modeData[i].maxSoilMoisture);
+      Serial.print("Min temp: ");
       Serial.println(modeData[i].minTemp);
+      Serial.print("Max temp: ");
       Serial.println(modeData[i].maxTemp);
     }
     break;
@@ -297,6 +331,84 @@ void addMode(const String & data) {
     break;
   }
 }
+void startMode(const String & data) {
+  int modeIndex = data.toInt() - 1;
+  if (modeIndex >= 0 && modeIndex < Iterate) {
+    lcd.clear();
+    lcd.print(modeData[modeIndex].name);
+    lcd.setCursor(0, 1);
+    lcd.print("Starting");
+    for(int i =0; i< 3 ; i++){
+        lcd.setCursor(8, 1);
+        lcd.print("    ");
+        lcd.setCursor(8, 1);
+        lcd.print(".");
+        delay(200);
+        lcd.print(".");
+        delay(200);
+        lcd.print(".");
+        delay(200);
+        lcd.print(".");
+        delay(200);
+    }
+    delay(2000);
+    lcd.clear();
+    DHT_CODE();
+  } else {
+    lcd.clear();
+    lcd.print("Invalid Mode!");
+    delay(1000);
+    lcd.clear();
+    lcd.print("C:1 A:2 S:3 R:4");
+    currentState = MENU;
+  }
+}
+
+void DHT_CODE() {
+  // لسه هعدل عليه اخليه يشتغل علي الداتا  
+  while (1) {
+    delay(1000);
+    byte HUM = dht.readHumidity();
+    byte TEMP = dht.readTemperature();
+    if (isnan(HUM) || isnan(TEMP))
+    {
+      Serial.println(F("Failed to read from DHT sensor!"));
+      return;
+    }
+    lcd.setCursor(0, 0);
+    lcd.print("T = ");
+    lcd.print(TEMP);
+    lcd.write((uint8_t)0);
+    lcd.print("C");
+    lcd.print("|");
+    lcd.print("H = ");
+    lcd.print(HUM);
+    lcd.print("%");
+    if (TEMP > 30){
+      analogWrite(EN_A, 220);
+      digitalWrite(In_1, HIGH);
+      digitalWrite(In_2, LOW);
+    }
+    else if (TEMP<20){
+      analogWrite(EN_A, 150);
+      digitalWrite(In_1, LOW);
+      digitalWrite(In_2, HIGH);
+    }
+    else{
+      digitalWrite(In_1, HIGH);
+      digitalWrite(In_2, LOW);
+      for (int SOFFor = 0; SOFFor < 180; SOFFor++){
+        analogWrite(EN_A, SOFFor);
+        delay(10);
+      }
+      for (int SOFRev = 180; SOFRev >0 ; SOFRev--){
+        analogWrite(EN_A, SOFRev);
+        delay(10);
+      }
+    }
+  }
+  
+}
 boolean validName(const String & name){
   if(name.length() < 3) return false;
   for(int i=0; i<=Iterate; i++){
@@ -312,4 +424,7 @@ boolean validSoilMoisture(const String & Moisture){
   }
   if(myMoisture > 100 || myMoisture < 0) return false;
   return true;
+} 
+void terminateSystem() {
+  exit(0);
 }
