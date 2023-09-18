@@ -31,7 +31,8 @@ enum State {
   MENU,
   CHANGE_PASSWORD,
   ADD_MODE,
-  START_MODE
+  START_MODE,
+  RESET
 };
 enum Add {
   Name,
@@ -83,29 +84,30 @@ void loop() {
   while (Serial.available() > 0) {
     char receivedChar = Serial.read();
     lcd.setCursor(2,1);
-    if (receivedChar == '\n' || receivedChar == '\r') {
+    if (receivedChar == '\r' || receivedChar == '\t') {
       handleInput(inputBuffer);
       inputBuffer = "";
     }
     else if (receivedChar == '\b' && inputBuffer.length() > 0) {
       inputBuffer = inputBuffer.substring(0, inputBuffer.length() - 1);
-      lcd.clear();
-      lcd.print("Enter password:");
       lcd.setCursor(0,1);
-      lcd.print("=>");
-      lcd.print(inputBuffer);
+      lcd.print(">>");
+      lcd.print(inputBuffer+" ");
     }
-    else {
+    else if (receivedChar != '\b'){
       inputBuffer += receivedChar;
       lcd.print(inputBuffer);
     }
   }
-  lcd.setCursor(0,1);
-  lcd.print("=>");
+  if(currentState!=START_MODE){
+    lcd.setCursor(0,1);
+    lcd.print(">>");
+  }
 }
 
 // Function definitions
 void handleInput(const String & input) {
+  if(input=="") currentState=RESET;
   switch (currentState) {
     case ENTER_PASSWORD :
       enterPassword(input);
@@ -123,7 +125,9 @@ void handleInput(const String & input) {
       startMode(input);
       break;      
     default:
-      // Handle other states
+      currentState = ENTER_PASSWORD;
+      lcd.clear();
+      lcd.print("Enter password:");
       break;
   }
 }
